@@ -4,7 +4,8 @@ import numpy as np
 from PIL import Image, ImageSequence
 
 ROTATE_DEG = 0
-GIF_PATH = "/home/dw/painel/gifs/kakashicute.gif"  # ajuste
+GIF_DIR = "/home/dw/painel/gifs/gifs2"
+SWITCH_DELAY = float(os.getenv("SWITCH_DELAY", 5))
 
 def find_fb_by_name(target="fb_ili9486"):
     for p in glob.glob("/sys/class/graphics/fb*/name"):
@@ -54,16 +55,8 @@ def rgb_to_rgb565_le(pil_img):
     out = np.stack([lo, hi], axis=-1)           # [H,W,2]
     return out
 
-def main():
-    FB, fb_idx = find_fb_by_name("fb_ili9486")
-    width, height, bpp, stride = fb_geometry(FB)
-    bytespp = bpp // 8
-    print(f"[fb] {FB}: {width}x{height} @{bpp}bpp stride={stride}")
-
-    if not os.path.exists(GIF_PATH):
-        raise FileNotFoundError(f"GIF não encontrado: {GIF_PATH}")
-
-    gif = Image.open(GIF_PATH)
+def load_gif(path, width, height):
+    gif = Image.open(path)
     frames, durations = [], []
     for f in ImageSequence.Iterator(gif):
         fr = f.convert("RGB")
@@ -71,46 +64,60 @@ def main():
         fr.thumbnail((width, height))
         frames.append(fr.copy())
         durations.append(f.info.get("duration", 100) / 1000.0)
+    return frames, durations
+
+def main():
+    FB, fb_idx = find_fb_by_name("fb_ili9486")
+    width, height, bpp, stride = fb_geometry(FB)
+    bytespp = bpp // 8
+    print(f"[fb] {FB}: {width}x{height} @{bpp}bpp stride={stride}")
+
+    gif_paths = glob.glob(os.path.join(GIF_DIR, "*.gif"))
+    if not gif_paths:
+        raise FileNotFoundError(f"Nenhum GIF encontrado em {GIF_DIR}")
 
     while True:
-        for fr, dt in zip(frames, durations):
-            # Canvas do tamanho exato do fb
-            canvas = Image.new("RGB", (width, height), "black")
-            # centralizado; mude pos se quiser
-            x = (width  - fr.width)  // 2
-            y = (height - fr.height) // 2
-            canvas.paste(fr, (x, y))
+        for path in gif_paths:
+            frames, durations = load_gif(path, width, height)
+            for fr, dt in zip(frames, durations):
+                # Canvas do tamanho exato do fb
+                canvas = Image.new("RGB", (width, height), "black")
+                # centralizado; mude pos se quiser
+                x = (width  - fr.width)  // 2
+                y = (height - fr.height) // 2
+                canvas.paste(fr, (x, y))
 
-            if ROTATE_DEG:
-                canvas = canvas.rotate(ROTATE_DEG, expand=False)
+                if ROTATE_DEG:
+                    canvas = canvas.rotate(ROTATE_DEG, expand=False)
 
-            if bpp == 16:
-                rgb565 = rgb_to_rgb565_le(canvas)          # [H,W,2]
-                row_bytes = width * 2
-                flat = rgb565.reshape(height, row_bytes)
-                buf = bytearray()
-                for y_line in range(height):
-                    line = flat[y_line].tobytes()
-                    buf += line
-                    if stride > row_bytes:
-                        buf += b"\x00" * (stride - row_bytes)
-                payload = bytes(buf)
-            else:
-                raw = canvas.tobytes()
-                row_bytes = width * bytespp
-                buf = bytearray()
-                for y_line in range(height):
-                    start = y_line * row_bytes
-                    buf += raw[start:start+row_bytes]
-                    if stride > row_bytes:
-                        buf += b"\x00" * (stride - row_bytes)
-                payload = bytes(buf)
+                if bpp == 16:
+                    rgb565 = rgb_to_rgb565_le(canvas)          # [H,W,2]
+                    row_bytes = width * 2
+                    flat = rgb565.reshape(height, row_bytes)
+                    buf = bytearray()
+                    for y_line in range(height):
+                        line = flat[y_line].tobytes()
+                        buf += line
+                        if stride > row_bytes:
+                            buf += b"\x00" * (stride - row_bytes)
+                    payload = bytes(buf)
+                else:
+                    raw = canvas.tobytes()
+                    row_bytes = width * bytespp
+                    buf = bytearray()
+                    for y_line in range(height):
+                        start = y_line * row_bytes
+                        buf += raw[start:start+row_bytes]
+                        if stride > row_bytes:
+                            buf += b"\x00" * (stride - row_bytes)
+                    payload = bytes(buf)
 
-            with open(FB, "wb") as f:
-                f.write(payload)
+                with open(FB, "wb") as f:
+                    f.write(payload)
 
-            time.sleep(dt)
+                time.sleep(dt)
+
+            time.sleep(SWITCH_DELAY)
 
 if __name__ == "__main__":
     main()
-
