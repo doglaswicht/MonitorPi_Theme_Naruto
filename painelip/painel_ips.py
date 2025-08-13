@@ -121,50 +121,67 @@ def cidr_to_network(cidr):
 
 def run_nmap_scan(cidr_network):
     """
-    Roda nmap -sn -n no CIDR e retorna lista de dicts:
-    [{ip, mac (opcional), vendor (opcional)}]
+    Executa o nmap com detecção de sistema operacional e resolução de nomes
+    na rede CIDR fornecida. Retorna o processo para leitura assíncrona da
+    saída.
     """
     if not cidr_network:
-        return []
-    cmd = ["nmap", "-sn", "-n", "-T4", cidr_network]
+        return None
+    cmd = ["nmap", "-O", "-T4", cidr_network]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     return proc
 
 def parse_nmap_output(text):
+    """Converte a saída do nmap em lista de dicts com chaves
+    {ip, mac, vendor, hostname, os}."""
     devices = []
-    cur_ip = None
+    cur = None
     for line in text.splitlines():
         line = line.strip()
-        # "Nmap scan report for 192.168.1.5"
+        # Inicia novo bloco para cada host encontrado
         m = re.search(r"Nmap scan report for (.*)", line)
         if m:
+            if cur:
+                devices.append(cur)
             token = m.group(1).strip()
-            # pode vir "host (ip)" ou só "ip"
-            m2 = re.search(r"\((\d+\.\d+\.\d+\.\d+)\)", token)
+            cur = {"ip": "", "mac": "", "vendor": "", "hostname": "", "os": ""}
+            
+            # Verifica se o token contém IP e hostname (formato: hostname (ip))
+            m2 = re.search(r"\(([\d.]+)\)$", token)
             if m2:
-                cur_ip = m2.group(1)
+                cur["ip"] = m2.group(1)
+                host = token[:m2.start()].strip()
+                if host and not re.match(r"^\d+\.\d+\.\d+\.\d+$", host):
+                    cur["hostname"] = host
             else:
-                # se já for IP direto
                 if re.match(r"^\d+\.\d+\.\d+\.\d+$", token):
-                    cur_ip = token
+                    cur["ip"] = token
                 else:
-                    cur_ip = None
+                    cur["hostname"] = token
             continue
-        if line.startswith("MAC Address:") and cur_ip:
-            # "MAC Address: XX:XX:XX:XX:XX:XX (Vendor Name)"
+
+        if not cur:
+            continue
+
+        if line.startswith("MAC Address:"):
             parts = line.split()
-            mac = parts[2]
-            vendor = " ".join(parts[3:]).strip("()") if len(parts) > 3 else ""
-            devices.append({"ip": cur_ip, "mac": mac, "vendor": vendor})
-            cur_ip = None
-        elif line.startswith("Host is up") and cur_ip:
-            # às vezes sem MAC; registra pelo menos o IP
-            devices.append({"ip": cur_ip})
-            cur_ip = None
+            if len(parts) >= 3:
+                cur["mac"] = parts[2]
+            if len(parts) > 3:
+                cur["vendor"] = " ".join(parts[3:]).strip("()")
+        elif line.startswith("OS details:"):
+            cur["os"] = line.split("OS details:", 1)[1].strip()
+        elif line.startswith("Running:") and not cur.get("os"):
+            cur["os"] = line.split("Running:", 1)[1].strip()
+
+    if cur:
+        devices.append(cur)
+
     # únicos por IP
     uniq = {}
     for d in devices:
-        uniq[d["ip"]] = d
+        if d.get("ip"):
+            uniq[d["ip"]] = d
     # ordena por IP
     ordered = sorted(uniq.values(), key=lambda d: tuple(int(x) for x in d["ip"].split(".")))
     return ordered
@@ -175,7 +192,7 @@ def draw_loading(img, step, title, info):
     w, h = img.size
     draw = ImageDraw.Draw(img)
     FONT_TITLE = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 26)
-    FONT_TEXT  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      20)
+    FONT_TEXT  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      16)
     draw.text((10, 8), title, fill="yellow", font=FONT_TITLE)
     draw.text((10, 40), info,   fill="cyan",   font=FONT_TEXT)
     # 3 dots
@@ -193,7 +210,7 @@ def draw_list(img, title, iface, ip_show, devices, page, page_time, started_at):
     w, h = img.size
     draw = ImageDraw.Draw(img)
     FONT_TITLE = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 26)
-    FONT_TEXT  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      20)
+    FONT_TEXT  = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",      16)
 
     draw.text((10, 8), title, fill="yellow", font=FONT_TITLE)
     draw.text((10, 40), f"IF: {iface or '-'}  IP: {ip_show or 'sem IP'}", fill="cyan", font=FONT_TEXT)
@@ -214,9 +231,9 @@ def draw_list(img, title, iface, ip_show, devices, page, page_time, started_at):
 
     for i, d in enumerate(devices[start:end], start=1):
         line = f"{start+i:02d}. {d['ip']}"
-        if "mac" in d:
+        if d.get("mac"):
             line += f"  {d['mac']}"
-        if "vendor" in d and d["vendor"]:
+        if d.get("vendor"):
             line += f"  ({d['vendor']})"
         draw.text((10, y0 + (i-1)*line_h), line, fill="white", font=FONT_TEXT)
 
@@ -267,7 +284,7 @@ def main():
             page_started = time.time()
 
         # render
-        img = Image.new("RGB", (width, height), "red")
+        img = Image.new("RGB", (width, height), "black")
 
         if scan_proc is not None and scan_proc.poll() is None:
             # ainda escaneando → anima 3 pontos
