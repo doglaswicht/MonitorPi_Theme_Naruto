@@ -304,3 +304,10 @@ Centralizar texto: use draw.textbbox() para medir e posicionar no centro.
 Tamanho da fonte: MPI3501 (320×480) fica legal com 24–36 para título e 18–24 para conteúdo.
 
 
+PARA PROCESSO VIA SYSTEMCTTL
+
+Se quiser parar:
+sudo systemctl stop painel-rotacao.service
+
+Se quiser desativar do boot:
+sudo systemctl disable painel-rotacao.service
