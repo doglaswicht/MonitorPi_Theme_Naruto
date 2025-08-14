@@ -15,7 +15,7 @@ PAGE_TIME = 3                # Segundos por página na lista
 TITLE = "Dispositivos na rede"
 LOADING_TITLE = "Scan Ninja..."  # Título durante carregamento/GIF
 DOT_INTERVAL = 0.3           # Intervalo para animação dos pontos
-LOADING_GIF_PATH = os.path.join(os.path.dirname(__file__), "..", "gifs", "gifs2", "kakashicute.gif")
+LOADING_GIF_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "gifs2", "kakashicute.gif")
 MIN_LOADING_TIME = 5         # Tempo mínimo (segundos) para mostrar o GIF de carregamento
 # ===== CONFIGURAÇÕES DE EXIBIÇÃO DE DISPOSITIVOS =====
 SHOW_DEVICE_INDEX = True     # Mostra número do dispositivo (1., 2., etc.)

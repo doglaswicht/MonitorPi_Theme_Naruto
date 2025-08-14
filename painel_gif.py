@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image, ImageSequence
 
 ROTATE_DEG = 0
-GIF_DIR = "/home/dw/painel/gifs/gifs2"
+GIF_DIR = "/home/dw/painel/assets/gifs2"
 SWITCH_DELAY = float(os.getenv("SWITCH_DELAY", 5))
 
 def find_fb_by_name(target="fb_ili9486"):

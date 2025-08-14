@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import subprocess
 # ===== CONFIGS =====
 ROTATE_DEG = 0  # 0, 90, 180, 270
-IMG_PATH   = "/home/dw/painel/gifs/kakashicute.png"
+IMG_PATH   = "/home/dw/painel/assets/kakashicute.png"
 # ========RETURN IP=========
 def list_ipv4():
     """Retorna dict iface->IP v4 (sem 127.0.0.1)."""
