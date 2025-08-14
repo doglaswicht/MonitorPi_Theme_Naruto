@@ -37,6 +37,7 @@ class TouchMenu:
     
     def __init__(self):
         self.running = False
+        self.paused = False
         self.gif_frames = []
         self.gif_frame_index = 0
         self.gif_last_update = 0
@@ -95,7 +96,7 @@ class TouchMenu:
             },
             {
                 "name": "REDE",
-                "script": "painelip/main.py", 
+                "script": "painelip/painel_ips.py", 
                 "icon": "🌐",
                 "color": (50, 255, 150),
                 "description": "Monitor de Rede"
@@ -278,6 +279,10 @@ class TouchMenu:
                         
                     sec, usec, type_, code, value = struct.unpack('llHHi', data)
                     
+                    
+                    if self.paused:
+                        continue
+
                     if type_ == 3:  # EV_ABS
                         if code == 0:  # ABS_X
                             current_x = value
@@ -302,6 +307,11 @@ class TouchMenu:
     def _handle_touch(self, raw_x, raw_y, screen_x, screen_y):
         """Processa eventos de toque."""
         global current_process
+        
+        # Se menu está pausado (script rodando), IGNORA completamente os toques
+        if self.paused:
+            print("⏸️  Menu pausado - toque ignorado")
+            return
         
         print(f"📍 TOQUE: RAW({raw_x},{raw_y}) -> TELA({screen_x},{screen_y})")
         
@@ -330,34 +340,35 @@ class TouchMenu:
         """Executa script selecionado."""
         print(f"🚀 EXECUTANDO: {name}")
         
-        # Para o menu
-        self.running = False
-        
-        # Executa script em processo separado e aguarda retorno
+        # Primeiro pausa apenas a renderização para executar
+        self.paused = True
+
         try:
-            # Define timeout de 30 segundos para voltar automaticamente
-            threading.Timer(30.0, self._force_return_to_menu).start()
-            
-            # Executa script
+            # Executa script e aguarda toque para voltar
             self._run_script_and_wait(script, name)
             
         except Exception as e:
             print(f"❌ Erro: {e}")
         
-        # Sempre volta ao menu
-        self._force_return_to_menu()
+        finally:
+            # SEMPRE volta ao menu após execução
+            print("🔄 Script finalizado - retornando ao menu...")
+            self._restart_menu()
 
     def _run_script_and_wait(self, script, name):
-        """Executa script e aguarda toque para sair."""
+        """Executa script e aguarda ele terminar (script detecta toque sozinho)."""
         # Limpa tela
         with open(FRAMEBUFFER, 'wb') as fb:
             fb.write(b'\x00\x00' * (SCREEN_WIDTH * SCREEN_HEIGHT))
         
-        # Ajusta diretório
+        # Ajusta diretório e comando baseado no script
         if "painelip" in script:
+            # Para scripts na pasta painelip
             os.chdir("/home/dw/painel/painelip")
-            cmd = ["python3", "painel_ips.py"]
+            script_file = script.split("/")[-1]  # Pega apenas o nome do arquivo
+            cmd = ["python3", script_file]
         else:
+            # Para scripts na pasta principal
             os.chdir("/home/dw/painel")
             cmd = ["python3", script]
         
@@ -367,59 +378,51 @@ class TouchMenu:
         process = subprocess.Popen(cmd, preexec_fn=os.setsid)
         print(f"✅ PID: {process.pid}")
         
-        # Aguarda 3 segundos
-        time.sleep(3.0)
-        print("👆 Toque na tela para voltar ao menu...")
+        # Para o menu durante execução
+        self.running = False
+        print("🛑 Menu pausado - script controla sua própria saída")
         
-        # Monitora toque com detecção melhorada
-        touch_detected = False
-        last_touch_time = 0
+        # Simplesmente aguarda o processo terminar
+        # O script detecta toque e sai sozinho
+        process.wait()
         
+        print("✅ Script finalizado - retornando ao menu")
+
+    def _restart_menu(self):
+        """Reinicia o menu principal."""
+        print("🔄 REINICIANDO MENU...")
+        
+        # Mata TODOS os processos relacionados (exceto o próprio menu)
+        try:
+            subprocess.run(["sudo", "pkill", "-f", "python3.*painel_"], 
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["sudo", "pkill", "-f", "python3.*painelv"], 
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except:
+            pass
+        
+        # Limpa tela completamente
+        try:
+            with open(FRAMEBUFFER, 'wb') as fb:
+                fb.write(b'\x00\x00' * (SCREEN_WIDTH * SCREEN_HEIGHT))
+        except:
+            pass
+        
+        # Aguarda 3 segundos para evitar detecção do mesmo toque
+        print("⏳ Aguardando para evitar toque duplo...")
+        time.sleep(3)
+        
+        # Limpa buffer de toque - lê e descarta eventos pendentes
         try:
             with open(TOUCH_DEVICE, 'rb') as f:
-                while process.poll() is None and not touch_detected:
-                    data = f.read(24)
-                    if len(data) < 24:
-                        time.sleep(0.01)  # Pequena pausa
-                        continue
-                        
-                    sec, usec, type_, code, value = struct.unpack('llHHi', data)
-                    
-                    # Detecta qualquer evento de toque (mais sensível)
-                    if type_ == 3 and code == 24 and value > 50:  # Reduzido de 200 para 50
-                        current_time = time.time()
-                        
-                        # Debounce mais curto
-                        if current_time - last_touch_time < 0.5:
-                            continue
-                            
-                        last_touch_time = current_time
-                        print("🔴 Toque detectado - saindo!")
-                        touch_detected = True
-                        break
-                        
-                    # Detecta também evento de release (quando solta o dedo)
-                    elif type_ == 1 and code == 330:  # BTN_TOUCH release
-                        current_time = time.time()
-                        if current_time - last_touch_time > 0.5:
-                            print("🔴 Release detectado - saindo!")
-                            touch_detected = True
-                            break
-                            
-        except Exception as e:
-            print(f"❌ Erro monitorando toque: {e}")
+                f.read(1024)  # Lê e descarta qualquer evento pendente
+        except:
+            pass
         
-        # Para o processo
-        try:
-            if process.poll() is None:
-                print("🛑 Parando processo...")
-                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-                time.sleep(1)
-                if process.poll() is None:
-                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-                print("✅ Processo parado")
-        except Exception as e:
-            print(f"⚠️  Erro parando processo: {e}")
+        # Reinicia o menu
+        self.running = True
+        self.paused = False
+        print("✅ MENU REINICIADO!")
 
     def _force_return_to_menu(self):
         """Força retorno ao menu."""
@@ -442,7 +445,7 @@ class TouchMenu:
         time.sleep(1)
         
         # Volta ao menu
-        self.running = True
+        self.paused = False
         print("✅ MENU RESTAURADO!")
     
     def start(self):
@@ -472,8 +475,9 @@ class TouchMenu:
         # Loop principal - renderiza menu
         try:
             while self.running:
-                menu_image = self._draw_menu()
-                self._write_to_framebuffer(menu_image)
+                if not self.paused:
+                    menu_image = self._draw_menu()
+                    self._write_to_framebuffer(menu_image)
                 time.sleep(0.1)  # 10 FPS
                 
         except KeyboardInterrupt:

@@ -3,6 +3,9 @@ import os, re, time, glob, subprocess
 import numpy as np
 from PIL import Image, ImageSequence
 
+# Importa módulo de detecção de toque
+from touch_exit import setup_touch_exit
+
 ROTATE_DEG = 0
 GIF_DIR = "/home/dw/painel/assets/gifs2"
 SWITCH_DELAY = float(os.getenv("SWITCH_DELAY", 5))
@@ -67,6 +70,9 @@ def load_gif(path, width, height):
     return frames, durations
 
 def main():
+    # Configura detecção de toque para sair
+    touch_monitor = setup_touch_exit()
+    
     FB, fb_idx = find_fb_by_name("fb_ili9486")
     width, height, bpp, stride = fb_geometry(FB)
     bytespp = bpp // 8
@@ -77,9 +83,20 @@ def main():
         raise FileNotFoundError(f"Nenhum GIF encontrado em {GIF_DIR}")
 
     while True:
+        # Verifica se deve sair
+        if touch_monitor.should_exit():
+            print("🔴 SAINDO DO PAINEL GIF...")
+            break
+            
         for path in gif_paths:
+            if touch_monitor.should_exit():
+                break
+                
             frames, durations = load_gif(path, width, height)
             for fr, dt in zip(frames, durations):
+                # Verifica toque antes de cada frame
+                if touch_monitor.should_exit():
+                    break
                 # Canvas do tamanho exato do fb
                 canvas = Image.new("RGB", (width, height), "black")
                 # centralizado; mude pos se quiser
@@ -116,7 +133,15 @@ def main():
                     f.write(payload)
 
                 time.sleep(dt)
+                
+                # Verifica toque após cada frame
+                if touch_monitor.should_exit():
+                    break
 
+            # Verifica toque após cada GIF
+            if touch_monitor.should_exit():
+                break
+                
             time.sleep(SWITCH_DELAY)
 
 if __name__ == "__main__":
