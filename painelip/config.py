@@ -7,7 +7,7 @@ ROTATE_DEG = 0               # 0, 90, 180, 270
 FB_TARGET = "fb_ili9486"     # Nome do framebuffer alvo
 
 # ===== CONFIGURAÇÕES DE REDE =====
-SCAN_INTERVAL = 45           # Segundos entre varreduras nmap
+SCAN_INTERVAL = 15           # Segundos entre varreduras nmap (reduzido para ser mais responsivo)
 PREF_IFACES = ["wlan0", "eth0"]  # Interfaces preferidas
 
 # ===== CONFIGURAÇÕES DE UI =====
@@ -16,7 +16,7 @@ TITLE = "Dispositivos na rede"
 LOADING_TITLE = "Scan Ninja..."  # Título durante carregamento/GIF
 DOT_INTERVAL = 0.3           # Intervalo para animação dos pontos
 LOADING_GIF_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "gifs2", "kakashicute.gif")
-MIN_LOADING_TIME = 5         # Tempo mínimo (segundos) para mostrar o GIF de carregamento
+MIN_LOADING_TIME = 3         # Tempo mínimo (segundos) para mostrar o GIF de carregamento (reduzido)
 # ===== CONFIGURAÇÕES DE EXIBIÇÃO DE DISPOSITIVOS =====
 SHOW_DEVICE_INDEX = True     # Mostra número do dispositivo (1., 2., etc.)
 SHOW_HOSTNAME = True         # Mostra nome do dispositivo
