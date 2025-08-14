@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Configurações do painel de dispositivos de rede."""
 
+import os
 # ===== CONFIGURAÇÕES DO DISPLAY =====
 ROTATE_DEG = 0               # 0, 90, 180, 270
 FB_TARGET = "fb_ili9486"     # Nome do framebuffer alvo
@@ -13,7 +14,7 @@ PREF_IFACES = ["wlan0", "eth0"]  # Interfaces preferidas
 PAGE_TIME = 3                # Segundos por página na lista
 TITLE = "Dispositivos na rede"
 DOT_INTERVAL = 0.3           # Intervalo para animação dos pontos
-
+LOADING_GIF_PATH = os.path.join(os.path.dirname(__file__), "..", "Kakashicute.gif")
 # ===== CONFIGURAÇÕES DE EXIBIÇÃO DE DISPOSITIVOS =====
 SHOW_DEVICE_INDEX = True     # Mostra número do dispositivo (1., 2., etc.)
 SHOW_HOSTNAME = True         # Mostra nome do dispositivo

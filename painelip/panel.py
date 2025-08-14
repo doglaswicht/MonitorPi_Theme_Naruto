@@ -26,11 +26,10 @@ class NetworkPanel:
         self.scan_buffer: List[str] = []
         
         # Estado da UI
-        self.loading_step = 0
         self.page = 0
         self.page_started = time.time()
         self.last_scan_end = 0.0
-        self.last_dot_change = time.time()
+        self.loading_start = time.time()
         
         # Configuração do framebuffer
         self._setup_framebuffer()
@@ -65,6 +64,7 @@ class NetworkPanel:
         if self.scan_process:
             self.scan_buffer = []
             print(f"Iniciando varredura da rede {network} via {interface}")
+            self.loading_start = time.time()
     
     def _update_scan_progress(self) -> None:
         """Atualiza o progresso da varredura em andamento."""
@@ -103,19 +103,14 @@ class NetworkPanel:
         ip_display = cidr.split('/')[0] if cidr else "N/A"
         
         if self.scan_process and self.scan_process.poll() is None:
-            # Tela de carregamento durante varredura
+            # Tela de carregamento durante varredura com GIF
             subtitle = f"{interface}: {ip_display}" if interface else "Configurando rede..."
-            img = self.ui.create_loading_screen(
-                self.loading_step, 
-                TITLE, 
+            elapsed = time.time() - self.loading_start
+            img = self.ui.create_gif_loading_screen(
+                elapsed,
+                TITLE,
                 subtitle + "  (escaneando...)"
             )
-            
-            # Atualiza animação
-            self.loading_step += 1
-            if time.time() - self.last_dot_change >= DOT_INTERVAL:
-                self.loading_step += 0.1
-                self.last_dot_change = time.time()
         else:
             # Tela de lista de dispositivos
             img, result = self.ui.create_device_list_screen(

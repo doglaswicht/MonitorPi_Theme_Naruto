@@ -5,7 +5,7 @@ import time
 import math
 from datetime import datetime
 from typing import List, Tuple, Union
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageSequence
 from models import DeviceInfo
 from config import *
 
@@ -24,6 +24,8 @@ class PanelUI:
         self.width = width
         self.height = height
         self._load_fonts()
+        self.loading_gif_frames: List[Image.Image] = []
+        self.loading_gif_durations: List[int] = []
     
     def _load_fonts(self) -> None:
         """Carrega as fontes necessárias."""
@@ -62,6 +64,49 @@ class PanelUI:
         self._draw_loading_dots(draw, step)
         
         # Desenha a hora atual
+        self._draw_current_time(draw)
+        
+        return img
+
+    def _load_loading_gif(self) -> None:
+        if self.loading_gif_frames:
+            return
+        try:
+            with Image.open(LOADING_GIF_PATH) as im:
+                for frame in ImageSequence.Iterator(im):
+                    self.loading_gif_frames.append(frame.convert("RGB"))
+                    self.loading_gif_durations.append(frame.info.get("duration", 100))
+        except Exception:
+            self.loading_gif_frames = []
+            self.loading_gif_durations = []
+
+    def create_gif_loading_screen(self, elapsed: float, title: str, info: str) -> Image.Image:
+        """Cria uma tela de carregamento usando um GIF animado."""
+        self._load_loading_gif()
+
+        if not self.loading_gif_frames:
+            return self.create_loading_screen(0, title, info)
+
+        durations = self.loading_gif_durations or [100] * len(self.loading_gif_frames)
+        total = sum(durations)
+        elapsed_ms = int((elapsed * 1000) % total)
+        cumulative = 0
+        frame_index = 0
+        for i, d in enumerate(durations):
+            cumulative += d
+            if elapsed_ms < cumulative:
+                frame_index = i
+                break
+        frame = self.loading_gif_frames[frame_index].copy()
+        frame.thumbnail((self.width, self.height))
+        x = (self.width - frame.width) // 2
+        y = (self.height - frame.height) // 2
+
+        img = Image.new("RGB", (self.width, self.height), COLOR_BACKGROUND)
+        img.paste(frame, (x, y))
+        draw = ImageDraw.Draw(img)
+        draw.text((10, 8), title, fill=COLOR_TITLE, font=self.font_title)
+        draw.text((10, 40), info, fill=COLOR_INFO, font=self.font_text)
         self._draw_current_time(draw)
         
         return img
