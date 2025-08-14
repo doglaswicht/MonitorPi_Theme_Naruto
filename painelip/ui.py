@@ -55,7 +55,7 @@ class PanelUI:
         draw = ImageDraw.Draw(img)
         
         # Título
-        draw.text((10, 8), title, fill=COLOR_TITLE, font=self.font_title)
+        #draw.text((10, 8), title, fill=COLOR_TITLE, font=self.font_title)
         
         # Informação
         draw.text((10, 40), info, fill=COLOR_INFO, font=self.font_text)

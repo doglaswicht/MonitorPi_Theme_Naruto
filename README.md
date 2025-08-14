@@ -311,3 +311,29 @@ sudo systemctl stop painel-rotacao.service
 
 Se quiser desativar do boot:
 sudo systemctl disable painel-rotacao.service
+
+MONITORADOR DE IP
+
+As Duas Telas do Sistema
+1️⃣ Tela de Carregamento (Durante a Varredura)
+Localização: ui.py - função create_loading_screen()
+
+Read ui.py, lines 35 to 60
+
+2️⃣ Tela Detalhada (Após a Varredura)
+Localização: ui.py - função create_device_list_screen()
+
+Read ui.py, lines 80 to 120
+
+🎛️ Onde o Sistema Decide Qual Tela Mostrar
+Localização: panel.py - função _render_current_screen() (linha ~91)
+
+Read panel.py, lines 90 to 120
+
+Read panel.py, lines 115 to 140
+
+📋 Resumo das Localizações
+1️⃣ Tela de Carregamento
+2️⃣ Tela Detalhada
+🎛️ Controlador (Decide qual mostrar)
+🎨 Formatação dos Detalhes

@@ -23,7 +23,6 @@ class NetworkPanel:
         self.discovery = NetworkDiscovery(PREF_IFACES)
         self.devices: List[DeviceInfo] = []
         self.scan_process: Optional[subprocess.Popen] = None
-        self.scan_buffer: List[str] = []
         
         # Estado da UI
         self.page = 0
@@ -62,31 +61,34 @@ class NetworkPanel:
         
         self.scan_process = self.discovery.start_nmap_scan(network)
         if self.scan_process:
-            self.scan_buffer = []
             print(f"Iniciando varredura da rede {network} via {interface}")
             self.loading_start = time.time()
     
     def _update_scan_progress(self) -> None:
         """Atualiza o progresso da varredura em andamento."""
         if self.scan_process and self.scan_process.poll() is None:
-            # Varredura ainda em andamento
-            try:
-                chunk = self.scan_process.stdout.read()
-                if chunk:
-                    self.scan_buffer.append(chunk)
-            except Exception:
-                pass
+            # Varredura ainda em andamento - NÃO tenta ler stdout durante execução
+            # Isso permite que a UI continue responsiva
+            pass
         elif self.scan_process:
-            # Varredura terminou
+            # Varredura terminou, mas verifica tempo mínimo de exibição
+            elapsed_time = time.time() - self.loading_start
+            if elapsed_time < MIN_LOADING_TIME:
+                # Ainda não passou o tempo mínimo, continua mostrando GIF
+                return
+            
+            # Tempo mínimo passou, processa resultados
             try:
-                # Lê o restante da saída
-                remaining = self.scan_process.stdout.read() or ""
-                self.scan_buffer.append(remaining)
+                # Lê toda a saída do processo
+                stdout, stderr = self.scan_process.communicate()
+                if stdout:
+                    text = stdout
+                else:
+                    text = ""
             except Exception:
-                pass
+                text = ""
             
             # Processa resultados
-            text = "".join(self.scan_buffer)
             self.devices = self.discovery.parse_nmap_output(text)
             
             # Reset estado
@@ -102,13 +104,25 @@ class NetworkPanel:
         interface, cidr = self.discovery.get_best_interface()
         ip_display = cidr.split('/')[0] if cidr else "N/A"
         
+        # Verifica se deve mostrar tela de carregamento
+        show_loading = False
+        
         if self.scan_process and self.scan_process.poll() is None:
+            # Processo ainda rodando
+            show_loading = True
+        elif self.scan_process:
+            # Processo terminou, mas verifica tempo mínimo
+            elapsed_time = time.time() - self.loading_start
+            if elapsed_time < MIN_LOADING_TIME:
+                show_loading = True
+        
+        if show_loading:
             # Tela de carregamento durante varredura com GIF
             subtitle = f"{interface}: {ip_display}" if interface else "Configurando rede..."
             elapsed = time.time() - self.loading_start
             img = self.ui.create_gif_loading_screen(
                 elapsed,
-                TITLE,
+                LOADING_TITLE,
                 subtitle + "  (escaneando...)"
             )
         else:

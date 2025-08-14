@@ -13,8 +13,10 @@ PREF_IFACES = ["wlan0", "eth0"]  # Interfaces preferidas
 # ===== CONFIGURAÇÕES DE UI =====
 PAGE_TIME = 3                # Segundos por página na lista
 TITLE = "Dispositivos na rede"
+LOADING_TITLE = "Scan Ninja..."  # Título durante carregamento/GIF
 DOT_INTERVAL = 0.3           # Intervalo para animação dos pontos
-LOADING_GIF_PATH = os.path.join(os.path.dirname(__file__), "..", "Kakashicute.gif")
+LOADING_GIF_PATH = os.path.join(os.path.dirname(__file__), "..", "gifs", "gifs2", "kakashicute.gif")
+MIN_LOADING_TIME = 5         # Tempo mínimo (segundos) para mostrar o GIF de carregamento
 # ===== CONFIGURAÇÕES DE EXIBIÇÃO DE DISPOSITIVOS =====
 SHOW_DEVICE_INDEX = True     # Mostra número do dispositivo (1., 2., etc.)
 SHOW_HOSTNAME = True         # Mostra nome do dispositivo
@@ -54,12 +56,3 @@ COLOR_TITLE = "yellow"
 COLOR_INFO = "cyan"
 COLOR_TEXT = "white"
 COLOR_LOADING_DOTS = "red"
-
-# ===== CONFIGURAÇÕES DE TEMPO =====
-SHOW_TIME = True             # Mostra hora no canto inferior direito
-TIME_FORMAT = "%H:%M:%S"     # Formato da hora (24h com segundos)
-# Outros formatos possíveis:
-# "%H:%M" - 24h sem segundos (14:30)
-# "%I:%M %p" - 12h com AM/PM (2:30 PM)
-# "%d/%m %H:%M" - Data e hora (14/08 14:30)
-TIME_COLOR = "cyan"          # Cor da hora (mesma cor das informações)
