@@ -94,7 +94,7 @@ class TouchMenu:
             },
             {
                 "name": "REDE",
-                "script": "painelip/painel_ips.py", 
+                "script": "painelip/main.py", 
                 "icon": "🌐",
                 "color": (50, 255, 150),
                 "description": "Monitor de Rede"
@@ -331,12 +331,14 @@ class TouchMenu:
         try:
             os.chdir("/home/dw/painel")
             
-            # Ajusta comando baseado no script
-            if "painelip" in script:
-                os.chdir("/home/dw/painel/painelip")
-                cmd = ["sudo", "python3", "painel_ips.py"]
-            else:
-                cmd = ["sudo", "python3", script]
+          # Ajusta diretório e comando de execução baseado no argumento "script"
+            script_dir = os.path.dirname(script)
+            script_name = os.path.basename(script)
+
+            if script_dir:
+                os.chdir(script_dir)
+
+            cmd = ["python3", script_name]
                 
             print(f"⚡ Comando: {' '.join(cmd)}")
             
