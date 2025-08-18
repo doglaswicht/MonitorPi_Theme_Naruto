@@ -10,8 +10,8 @@ echo "======================================"
 cd /home/dw/painel
 
 # Verifica se os arquivos principais existem
-if [ ! -f "touch_menu_visual.py" ]; then
-    echo "❌ Arquivo principal não encontrado: touch_menu_visual.py"
+if [ ! -f "src/core/touch_menu_visual.py" ]; then
+    echo "❌ Arquivo principal não encontrado: src/core/touch_menu_visual.py"
     exit 1
 fi
 
@@ -42,4 +42,4 @@ fi
 # Inicia o menu principal
 echo "🚀 Iniciando menu touchscreen..."
 echo ""
-exec python3 touch_menu_visual.py
+exec python3 src/core/touch_menu_visual.py

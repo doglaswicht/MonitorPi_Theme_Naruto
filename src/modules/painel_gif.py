@@ -4,7 +4,10 @@ import numpy as np
 from PIL import Image, ImageSequence
 
 # Importa módulo de detecção de toque
-from touch_exit import setup_touch_exit
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.touch_exit import setup_touch_exit
 
 ROTATE_DEG = 0
 GIF_DIR = "/home/dw/painel/assets/gifs2"
@@ -85,17 +88,37 @@ def main():
     while True:
         # Verifica se deve sair
         if touch_monitor.should_exit():
-            print("🔴 SAINDO DO PAINEL GIF...")
+            print("🔴 TOQUE DETECTADO - VOLTANDO AO MENU!")
+            print("🚀 Executando menu principal...")
+            
+            # Para este script e executa o menu
+            touch_monitor.stop()
+            
+            # Executa o menu principal
+            import subprocess
+            subprocess.run(["sudo", "python3", "/home/dw/painel/src/core/touch_menu_visual.py"])
             break
             
         for path in gif_paths:
             if touch_monitor.should_exit():
+                print("🔴 TOQUE DETECTADO - VOLTANDO AO MENU!")
+                print("🚀 Executando menu principal...")
+                
+                # Executa o menu principal
+                import subprocess
+                subprocess.run(["sudo", "python3", "/home/dw/painel/src/core/touch_menu_visual.py"])
                 break
                 
             frames, durations = load_gif(path, width, height)
             for fr, dt in zip(frames, durations):
                 # Verifica toque antes de cada frame
                 if touch_monitor.should_exit():
+                    print("🔴 TOQUE DETECTADO - VOLTANDO AO MENU!")
+                    print("🚀 Executando menu principal...")
+                    
+                    # Executa o menu principal
+                    import subprocess
+                    subprocess.run(["sudo", "python3", "/home/dw/painel/src/core/touch_menu_visual.py"])
                     break
                 # Canvas do tamanho exato do fb
                 canvas = Image.new("RGB", (width, height), "black")
@@ -136,10 +159,22 @@ def main():
                 
                 # Verifica toque após cada frame
                 if touch_monitor.should_exit():
+                    print("🔴 TOQUE DETECTADO - VOLTANDO AO MENU!")
+                    print("🚀 Executando menu principal...")
+                    
+                    # Executa o menu principal
+                    import subprocess
+                    subprocess.run(["sudo", "python3", "/home/dw/painel/src/core/touch_menu_visual.py"])
                     break
 
             # Verifica toque após cada GIF
             if touch_monitor.should_exit():
+                print("🔴 TOQUE DETECTADO - VOLTANDO AO MENU!")
+                print("🚀 Executando menu principal...")
+                
+                # Executa o menu principal
+                import subprocess
+                subprocess.run(["sudo", "python3", "/home/dw/painel/src/core/touch_menu_visual.py"])
                 break
                 
             time.sleep(SWITCH_DELAY)

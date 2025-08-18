@@ -76,7 +76,8 @@ class PanelUI:
                 for frame in ImageSequence.Iterator(im):
                     self.loading_gif_frames.append(frame.convert("RGB"))
                     self.loading_gif_durations.append(frame.info.get("duration", 100))
-        except Exception:
+        except Exception as e:
+            print(f"❌ Erro carregando GIF: {e}")
             self.loading_gif_frames = []
             self.loading_gif_durations = []
 

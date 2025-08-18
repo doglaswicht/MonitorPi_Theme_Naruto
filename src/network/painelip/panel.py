@@ -3,16 +3,36 @@
 
 import time
 import subprocess
+import sys
+import os
 from typing import List, Optional
-from config import *
-from models import DeviceInfo
-from framebuffer import (
-    find_framebuffer_by_name, 
-    get_framebuffer_geometry, 
-    write_image_to_framebuffer
-)
-from network import NetworkDiscovery
-from ui import PanelUI
+
+# Adiciona o diretório pai ao path para importar touch_exit
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from core.touch_exit import setup_touch_exit
+
+# Imports locais - compatível com execução direta e como módulo
+try:
+    from .config import *
+    from .models import DeviceInfo
+    from .framebuffer import (
+        find_framebuffer_by_name, 
+        get_framebuffer_geometry, 
+        write_image_to_framebuffer
+    )
+    from .network import NetworkDiscovery
+    from .ui import PanelUI
+except ImportError:
+    # Fallback para execução direta
+    from config import *
+    from models import DeviceInfo
+    from framebuffer import (
+        find_framebuffer_by_name, 
+        get_framebuffer_geometry, 
+        write_image_to_framebuffer
+    )
+    from network import NetworkDiscovery
+    from ui import PanelUI
 
 
 class NetworkPanel:
@@ -154,8 +174,24 @@ class NetworkPanel:
         print(f"Iniciando painel de dispositivos de rede...")
         print(f"Display: {self.width}x{self.height}, Intervalo: {SCAN_INTERVAL}s")
         
+        # Configura detecção de toque para sair
+        touch_monitor = setup_touch_exit()
+        
         try:
             while True:
+                # Verifica se deve sair
+                if touch_monitor.should_exit():
+                    print("🔴 TOQUE DETECTADO - VOLTANDO AO MENU!")
+                    print("🚀 Executando menu principal...")
+                    
+                    # Para este script e executa o menu
+                    touch_monitor.stop()
+                    
+                    # Executa o menu principal
+                    import subprocess
+                    subprocess.run(["sudo", "python3", "/home/dw/painel/src/core/touch_menu_visual.py"])
+                    break
+                    
                 # Verifica se deve iniciar nova varredura
                 if self._should_start_new_scan():
                     self._start_network_scan()
@@ -169,8 +205,29 @@ class NetworkPanel:
                 # Pausa para animação suave e economia de CPU
                 time.sleep(0.2)
                 
+                # Verifica toque após cada ciclo
+                if touch_monitor.should_exit():
+                    print("🔴 TOQUE DETECTADO - VOLTANDO AO MENU!")
+                    print("🚀 Executando menu principal...")
+                    
+                    # Executa o menu principal
+                    import subprocess
+                    subprocess.run(["sudo", "python3", "/home/dw/painel/src/core/touch_menu_visual.py"])
+                    break
+                
         except KeyboardInterrupt:
             print("\\nEncerrando painel...")
         except Exception as e:
             print(f"Erro no painel: {e}")
             raise
+
+
+if __name__ == "__main__":
+    """Executa o painel quando chamado diretamente."""
+    try:
+        panel = NetworkPanel()
+        panel.run()
+    except Exception as e:
+        print(f"❌ Erro iniciando painel: {e}")
+        import traceback
+        traceback.print_exc()

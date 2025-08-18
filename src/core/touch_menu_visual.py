@@ -20,7 +20,30 @@ from PIL import Image, ImageDraw, ImageFont
 SCREEN_WIDTH = 480
 SCREEN_HEIGHT = 320
 FRAMEBUFFER = "/dev/fb0"
-TOUCH_DEVICE = "/dev/input/event0"
+# Configuração do touchscreen - detecta automaticamente
+def find_touch_device():
+    """Encontra automaticamente o dispositivo de touchscreen"""
+    import glob
+    for event_path in glob.glob('/dev/input/event*'):
+        try:
+            event_name = event_path.split('/')[-1]  # ex: event2
+            name_path = f'/sys/class/input/{event_name}/device/name'
+            with open(name_path, 'r') as f:
+                device_name = f.read().strip()
+            
+            # Procura por dispositivos de touchscreen conhecidos
+            if any(touch_name in device_name.lower() for touch_name in 
+                   ['ads7846', 'touchscreen', 'touch', 'ft6236', 'goodix']):
+                print(f"✅ Touchscreen encontrado: {event_path} ({device_name})")
+                return event_path
+        except:
+            continue
+    
+    # Fallback para event0 se não encontrar
+    print("⚠️  Usando fallback: /dev/input/event0")
+    return '/dev/input/event0'
+
+TOUCH_DEVICE = find_touch_device()
 
 # Layout
 LEFT_PANEL_WIDTH = 240   # Lado esquerdo para GIF
@@ -82,21 +105,21 @@ class TouchMenu:
         button_configs = [
             {
                 "name": "SISTEMA",
-                "script": "painelv3.py",
+                "script": "src/modules/painelv3.py",
                 "icon": "📊",
                 "color": (50, 150, 255),
                 "description": "Monitor do Sistema"
             },
             {
                 "name": "ANIMAÇÃO", 
-                "script": "painel_gif.py",
+                "script": "src/modules/painel_gif.py",
                 "icon": "🎬",
                 "color": (255, 100, 50),
                 "description": "GIFs & Animações"
             },
             {
                 "name": "REDE",
-                "script": "painelip/painel_ips.py", 
+                "script": "src/network/painelip/panel.py", 
                 "icon": "🌐",
                 "color": (50, 255, 150),
                 "description": "Monitor de Rede"
@@ -356,15 +379,14 @@ class TouchMenu:
             self._restart_menu()
 
     def _run_script_and_wait(self, script, name):
-        """Executa script e aguarda ele terminar (script detecta toque sozinho)."""
-        # Limpa tela
-        with open(FRAMEBUFFER, 'wb') as fb:
-            fb.write(b'\x00\x00' * (SCREEN_WIDTH * SCREEN_HEIGHT))
+        """Executa script e termina o menu (script controlará seu próprio retorno)."""
+        print(f"⚡ Executando: {script}")
+        print(f"🛑 Menu encerrando - {name} assumirá controle")
         
         # Ajusta diretório e comando baseado no script
         if "painelip" in script:
-            # Para scripts na pasta painelip
-            os.chdir("/home/dw/painel/painelip")
+            # Para scripts na pasta painelip (nova estrutura)
+            os.chdir("/home/dw/painel/src/network/painelip")
             script_file = script.split("/")[-1]  # Pega apenas o nome do arquivo
             cmd = ["python3", script_file]
         else:
@@ -372,21 +394,12 @@ class TouchMenu:
             os.chdir("/home/dw/painel")
             cmd = ["python3", script]
         
-        print(f"⚡ Executando: {' '.join(cmd)}")
+        # Limpa a tela antes de executar
+        with open(FRAMEBUFFER, 'wb') as fb:
+            fb.write(b'\x00\x00' * (SCREEN_WIDTH * SCREEN_HEIGHT))
         
-        # Executa script
-        process = subprocess.Popen(cmd, preexec_fn=os.setsid)
-        print(f"✅ PID: {process.pid}")
-        
-        # Para o menu durante execução
-        self.running = False
-        print("🛑 Menu pausado - script controla sua própria saída")
-        
-        # Simplesmente aguarda o processo terminar
-        # O script detecta toque e sai sozinho
-        process.wait()
-        
-        print("✅ Script finalizado - retornando ao menu")
+        # Executa script e encerra este menu
+        os.execvp("python3", cmd)
 
     def _restart_menu(self):
         """Reinicia o menu principal."""
