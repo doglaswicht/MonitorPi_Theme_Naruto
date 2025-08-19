@@ -71,7 +71,7 @@ class TouchMenu:
     def _load_gif(self):
         """Carrega frames do GIF."""
         try:
-            gif_path = "/home/dw/painel/assets/narutowalking.gif"
+            gif_path = "/home/dw/painel/assets/kakashicute.gif"
             if os.path.exists(gif_path):
                 gif = Image.open(gif_path)
                 self.gif_frames = []
@@ -105,31 +105,24 @@ class TouchMenu:
         button_configs = [
             {
                 "name": "Who am i?",
-                "script": "src/modules/painelv3.py",  # Caminho correto
+                "script": "painelv3.py",
                 "icon": "📊",
-                "color": (240, 120, 0),
+                "color": (50, 150, 255),
                 "description": "Monitor do Sistema"
             },
             {
-                "name": "Take a time", 
-                "script": "src/modules/painel_gif.py",  # Caminho correto
+                "name": "ANIMAÇÃO", 
+                "script": "painel_gif.py",
                 "icon": "🎬",
-                "color": (44, 90, 160),
+                "color": (255, 100, 50),
                 "description": "GIFs & Animações"
             },
             {
-                "name": "Scan Ninja",
-                "script": "src/network/painelip/painel_ips.py",  # Caminho correto
+                "name": "REDE",
+                "script": "painelip/painel_ips.py", 
                 "icon": "🌐",
-                "color": (28, 28, 28),
+                "color": (50, 255, 150),
                 "description": "Monitor de Rede"
-            },
-            {
-                "name": "Check Eyes",
-                "script": "Verificar webcams",  # Caminho correto
-                "icon": "🌐",
-                "color": (88, 120, 80),
-                "description": "Verify CAM"
             }
         ]
         
@@ -210,7 +203,7 @@ class TouchMenu:
     def _draw_menu(self):
         """Desenha o menu completo."""
         # Cria imagem base
-        img = Image.new('RGB', (SCREEN_WIDTH, SCREEN_HEIGHT), (0, 0, 0)) # Cor do fundo
+        img = Image.new('RGB', (SCREEN_WIDTH, SCREEN_HEIGHT), (20, 20, 30)) # Cor do fundo
         draw = ImageDraw.Draw(img)
         
         try:
@@ -385,11 +378,16 @@ class TouchMenu:
         print(f"⚡ Executando: {script}")
         print(f"🛑 Menu encerrando - {name} assumirá controle")
         
-        # Sempre muda para o diretório base do projeto
-        os.chdir("/home/dw/painel")
-        
-        # Executa script com caminho completo
-        cmd = ["python3", script]
+        # Ajusta diretório e comando baseado no script
+        if "painelip" in script:
+            # Para scripts na pasta painelip
+            os.chdir("/home/dw/painel/painelip")
+            script_file = script.split("/")[-1]  # Pega apenas o nome do arquivo
+            cmd = ["python3", script_file]
+        else:
+            # Para scripts na pasta principal
+            os.chdir("/home/dw/painel")
+            cmd = ["python3", script]
         
         # Limpa a tela antes de executar
         with open(FRAMEBUFFER, 'wb') as fb:
