@@ -7,11 +7,11 @@ ROTATE_DEG = 0               # 0, 90, 180, 270
 FB_TARGET = "fb_ili9486"     # Nome do framebuffer alvo
 
 # ===== CONFIGURAÇÕES DE REDE =====
-SCAN_INTERVAL = 15           # Segundos entre varreduras nmap (reduzido para ser mais responsivo)
+SCAN_INTERVAL = 60           # Segundos entre varreduras nmap (aumentado para dar mais tempo ao scan)
 PREF_IFACES = ["wlan0", "eth0"]  # Interfaces preferidas
 
 # ===== CONFIGURAÇÕES DE UI =====
-PAGE_TIME = 3                # Segundos por página na lista
+PAGE_TIME = 8                # Segundos por página na lista (aumentado para melhor leitura)
 TITLE = "Dispositivos na rede"
 LOADING_TITLE = "Scan Ninja..."  # Título durante carregamento/GIF
 DOT_INTERVAL = 0.3           # Intervalo para animação dos pontos

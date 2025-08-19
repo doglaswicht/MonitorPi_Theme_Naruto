@@ -224,9 +224,12 @@ class PanelUI:
         header_height = 70
         footer_height = 20
         available_height = self.height - header_height - footer_height
-        
-        # Usa altura configurável por dispositivo
-        return max(1, available_height // DEVICE_LINE_HEIGHT)
+
+        # Cada dispositivo pode ocupar até 3 linhas (info básica, MAC/Vendor e portas)
+        device_block_height = DEVICE_LINE_HEIGHT * 3
+
+        # Usa altura configurável por bloco de dispositivo
+        return max(1, available_height // device_block_height)
     
     def _draw_device_list(
         self, 
@@ -234,13 +237,67 @@ class PanelUI:
         devices: List[DeviceInfo], 
         start_idx: int
     ) -> None:
-        """Desenha a lista de dispositivos."""
-        y_start = 70
-        
+        """Desenha a lista de dispositivos.
+
+        Os dispositivos são exibidos em blocos de até três linhas:
+        1. Informações básicas (índice, hostname, IP, OS)
+        2. Endereço MAC e fabricante
+        3. Portas abertas com seus serviços
+        """
+
+        y_pos = 70
         for i, device in enumerate(devices):
-            y_pos = y_start + (i * DEVICE_LINE_HEIGHT)
-            device_text = self._format_device_info(device, start_idx + i + 1)
-            draw.text((DEVICE_TEXT_INDENT, y_pos), device_text, fill=COLOR_TEXT, font=self.font_small)
+            idx = start_idx + i + 1
+            text_color = "red" if device.is_camera else COLOR_TEXT
+
+            # Linha principal com informações básicas
+            main_parts = []
+            if SHOW_DEVICE_INDEX:
+                main_parts.append(f"{idx:2d}.")
+            if SHOW_HOSTNAME and device.hostname:
+                main_parts.append(device.hostname[:MAX_HOSTNAME_LENGTH])
+            if SHOW_IP and device.ip:
+                main_parts.append(device.ip)
+            if SHOW_OS and device.os:
+                main_parts.append(f"OS:{device.os[:MAX_OS_LENGTH]}")
+
+            draw.text(
+                (DEVICE_TEXT_INDENT, y_pos),
+                " ".join(main_parts),
+                fill=text_color,
+                font=self.font_small,
+            )
+            y_pos += DEVICE_LINE_HEIGHT
+
+            # Linha com MAC e fabricante
+            mac_vendor_parts = []
+            if SHOW_MAC and device.mac:
+                mac_vendor_parts.append(device.mac)
+            if SHOW_VENDOR and device.vendor:
+                mac_vendor_parts.append(device.vendor[:MAX_VENDOR_LENGTH])
+            if mac_vendor_parts:
+                draw.text(
+                    (DEVICE_TEXT_INDENT + 10, y_pos),
+                    " ".join(mac_vendor_parts),
+                    fill=text_color,
+                    font=self.font_small,
+                )
+                y_pos += DEVICE_LINE_HEIGHT
+
+            # Linha com portas abertas e serviços
+            if device.open_ports:
+                ports_text = ", ".join(
+                    f"{port}/{service}" if service else str(port)
+                    for port, service in sorted(device.open_ports.items())
+                )
+                draw.text(
+                    (DEVICE_TEXT_INDENT + 10, y_pos),
+                    ports_text,
+                    fill=text_color,
+                    font=self.font_small,
+                )
+                y_pos += DEVICE_LINE_HEIGHT
+
     
     def _format_device_info(self, device: DeviceInfo, index: int) -> str:
         """Formata as informações do dispositivo para exibição."""
@@ -258,15 +315,6 @@ class PanelUI:
         # Endereço IP
         if SHOW_IP and device.ip:
             parts.append(device.ip)
-        
-        # MAC Address (últimos caracteres)
-        if SHOW_MAC and device.mac:
-            parts.append(device.mac[-8:])
-        
-        # Vendor/Fabricante
-        if SHOW_VENDOR and device.vendor:
-            vendor = device.vendor[:MAX_VENDOR_LENGTH]
-            parts.append(f"({vendor})")
         
         # Sistema Operacional
         if SHOW_OS and device.os:
