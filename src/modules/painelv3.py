@@ -154,10 +154,11 @@ while True:
         draw = ImageDraw.Draw(img)
         iface, ip = pick_ip()
         # textos
-        draw.text((10, 10),  "DOGLAS WICHT",                  fill="yellow", font=FONT_BIG)
-        draw.text((10, 50),  time.strftime("Hora: %H:%M:%S"), fill="yellow", font=FONT_BIG)
-        draw.text((10, 90),  time.strftime("Data: %d/%m/%Y"), fill="cyan",   font=FONT_SMALL)
-        draw.text((10, 270), f"IP ({iface or '-'}) : {ip}", fill="lime", font=FONT_SMALL)
+        draw.text((10, 10),  "Dw",                            fill="yellow", font=FONT_BIG)
+        draw.text((10, 40), f"IP ({iface or '-'}) : {ip}", fill="lime", font=FONT_SMALL)
+        draw.text((10, 260),  time.strftime("Hora: %H:%M:%S"), fill="cyan", font=FONT_SMALL)
+        draw.text((10, 280),  time.strftime("Data: %d/%m/%Y"), fill="cyan",   font=FONT_SMALL)
+
         # imagem (com transparência preservada)
         if os.path.exists(IMG_PATH):
             logo = Image.open(IMG_PATH).convert("RGBA")

@@ -7,6 +7,20 @@ import ipaddress
 from typing import Dict, List, Optional, Tuple
 from models import DeviceInfo, NetworkScanResult
 
+# Principais fabricantes de câmeras IP para identificação pelo vendor
+CAMERA_VENDORS = [
+    "hikvision",
+    "dahua",
+    "axis",
+    "hanwha",
+    "vivotek",
+    "foscam",
+    "bosch",
+    "arlo",
+    "grandstream",
+    "mobotix",
+    "avigilon",
+]
 
 class NetworkDiscovery:
     """Gerenciador de descoberta de dispositivos na rede."""
@@ -90,7 +104,7 @@ class NetworkDiscovery:
         if not network:
             return None
         
-        cmd = ["nmap", "-sS", "-n", "-p", "80,443,554,8080,8888,81,8554,9000,5000", network]
+        cmd = ["nmap", "-sS", "-O", "-sV", "--version-intensity", "1", "-T4", "-p", "80,443,554,8080,8888,81,8554,9000,5000", network]
         try:
             proc = subprocess.Popen(
                 cmd, 
@@ -114,7 +128,17 @@ class NetworkDiscovery:
         """
         devices: List[DeviceInfo] = []
         current_device: Optional[DeviceInfo] = None
-        
+        parsing_ports = False
+
+        def mark_camera(device: DeviceInfo) -> None:
+            """Define a flag is_camera se portas ou vendor indicarem câmera."""
+            if 80 in device.open_ports or 554 in device.open_ports:
+                device.is_camera = True
+                return
+            vendor_lower = device.vendor.lower()
+            if any(v in vendor_lower for v in CAMERA_VENDORS):
+                device.is_camera = True
+
         for line in text.splitlines():
             line = line.strip()
             
@@ -122,10 +146,12 @@ class NetworkDiscovery:
             scan_match = re.search(r"Nmap scan report for (.*)", line)
             if scan_match:
                 if current_device:
+                    mark_camera(current_device)
                     devices.append(current_device)
                 
                 token = scan_match.group(1).strip()
                 current_device = DeviceInfo()
+                parsing_ports = False
                 
                 # Verifica se tem hostname e IP no formato: hostname (ip)
                 ip_match = re.search(r"\(([0-9.]+)\)$", token)
@@ -145,6 +171,24 @@ class NetworkDiscovery:
             if not current_device:
                 continue
             
+            if line.startswith("PORT"):
+                parsing_ports = True
+                continue
+
+            if parsing_ports:
+                # Tenta capturar informações de porta e serviço (incluindo versões)
+                port_match = re.match(r"(\d+)/\w+\s+(\w+)\s+(.+)", line)
+                if port_match:
+                    port = int(port_match.group(1))
+                    state = port_match.group(2)
+                    service_info = port_match.group(3).strip()
+                    if state == "open":
+                        # Pega apenas o nome do serviço (antes do espaço, se houver)
+                        service = service_info.split()[0] if service_info else "unknown"
+                        current_device.open_ports[port] = service
+                    continue
+                else:
+                    parsing_ports = False
             # Informações MAC
             if line.startswith("MAC Address:"):
                 parts = line.split()
@@ -161,6 +205,7 @@ class NetworkDiscovery:
         
         # Adiciona o último dispositivo
         if current_device:
+            mark_camera(current_device)
             devices.append(current_device)
         
         return self._deduplicate_devices(devices)

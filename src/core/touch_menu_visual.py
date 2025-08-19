@@ -108,25 +108,25 @@ class TouchMenu:
                 "script": "src/modules/painelv3.py",  # Caminho correto
                 "icon": "📊",
                 "color": (240, 120, 0),
-                "description": "Monitor do Sistema"
+                "description": "SYSTEM INFO"
             },
             {
                 "name": "Take a time", 
                 "script": "src/modules/painel_gif.py",  # Caminho correto
                 "icon": "🎬",
                 "color": (44, 90, 160),
-                "description": "GIFs & Animações"
+                "description": "GIFs"
             },
             {
                 "name": "Scan Ninja",
                 "script": "src/network/painelip/painel_ips.py",  # Caminho correto
                 "icon": "🌐",
                 "color": (28, 28, 28),
-                "description": "Monitor de Rede"
+                "description": "SYSTEM NETWORK"
             },
             {
-                "name": "Check Eyes",
-                "script": "Verificar webcams",  # Caminho correto
+                "name": "BLOCKED",
+                "script": "src/modules/painel_gif.py",  # Caminho correto
                 "icon": "🌐",
                 "color": (88, 120, 80),
                 "description": "Verify CAM"
@@ -242,7 +242,7 @@ class TouchMenu:
                      font=font_title, fill=(150, 150, 150), anchor="mm")
         
         # Título no topo do lado esquerdo
-        draw.text((LEFT_PANEL_WIDTH//2, 15), "PAINEL KAKASHI", 
+        draw.text((LEFT_PANEL_WIDTH//2, 15), "Wainting for a mission...", 
                  font=font_title, fill=(255, 255, 255), anchor="mm")
         
         # === LINHA DIVISÓRIA ===
@@ -255,7 +255,7 @@ class TouchMenu:
             img.paste(button_img, (button["x"], button["y"]))
         
         # Título do lado direito
-        draw.text((LEFT_PANEL_WIDTH + RIGHT_PANEL_WIDTH//2, 15), "Mode", 
+        draw.text((LEFT_PANEL_WIDTH + RIGHT_PANEL_WIDTH//2, 15), "#KANOHA#", 
                  font=font_title, fill=(255, 255, 255), anchor="mm")
         
         # Status na parte inferior
