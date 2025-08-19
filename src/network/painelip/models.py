@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Modelos de dados para o painel de dispositivos."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 
@@ -13,6 +13,8 @@ class DeviceInfo:
     vendor: str = ""
     hostname: str = ""
     os: str = ""
+    open_ports: dict[int, str] = field(default_factory=dict)
+    is_camera: bool = False
 
     def __str__(self) -> str:
         """Representação em string do dispositivo."""

@@ -90,7 +90,7 @@ class NetworkDiscovery:
         if not network:
             return None
         
-        cmd = ["nmap", "-O", "-T4", network]
+        cmd = ["nmap", "-sS", "-n", "-p", "80,443,554,8080,8888,81,8554,9000,5000", network]
         try:
             proc = subprocess.Popen(
                 cmd, 
