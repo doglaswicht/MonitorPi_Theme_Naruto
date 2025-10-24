@@ -15,6 +15,7 @@ class DeviceInfo:
     os: str = ""
     open_ports: dict[int, str] = field(default_factory=dict)
     is_camera: bool = False
+    device_type: str = ""  # Tipo do dispositivo (PC, Server, etc.)
 
     def __str__(self) -> str:
         """Representação em string do dispositivo."""

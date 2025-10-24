@@ -255,7 +255,7 @@ class TouchMenu:
             img.paste(button_img, (button["x"], button["y"]))
         
         # Título do lado direito
-        draw.text((LEFT_PANEL_WIDTH + RIGHT_PANEL_WIDTH//2, 15), "#KANOHA#", 
+        draw.text((LEFT_PANEL_WIDTH + RIGHT_PANEL_WIDTH//2, 15), "#KONOHA#", 
                  font=font_title, fill=(255, 255, 255), anchor="mm")
         
         # Status na parte inferior

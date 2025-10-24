@@ -9,6 +9,9 @@ FB_TARGET = "fb_ili9486"     # Nome do framebuffer alvo
 # ===== CONFIGURAÇÕES DE REDE =====
 SCAN_INTERVAL = 60           # Segundos entre varreduras nmap (aumentado para dar mais tempo ao scan)
 PREF_IFACES = ["wlan0", "eth0"]  # Interfaces preferidas
+CAMERA_PORTS = [80, 443, 554, 8080, 8888, 81, 8554, 9000, 5000]  # Portas comuns de câmeras IP e dispositivos de rede
+COMMON_PORTS = [22, 80, 135, 139, 443, 445, 3389, 5900]  # Portas comuns para detectar mais dispositivos (reduzido para ser mais rápido)
+ENABLE_FULL_SCAN = True      # Habilita scan completo (ping + portas comuns) em vez de apenas câmeras
 
 # ===== CONFIGURAÇÕES DE UI =====
 PAGE_TIME = 8                # Segundos por página na lista (aumentado para melhor leitura)
@@ -56,3 +59,4 @@ COLOR_TITLE = "yellow"
 COLOR_INFO = "cyan"
 COLOR_TEXT = "white"
 COLOR_LOADING_DOTS = "red"
+CAMERA_COLOR = "red"         # Cor para dispositivos identificados como câmeras

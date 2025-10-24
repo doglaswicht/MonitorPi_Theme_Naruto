@@ -19,6 +19,9 @@ except Exception as e:
 # ===== CONFIGS =====
 ROTATE_DEG = 0  # 0, 90, 180, 270
 IMG_PATH   = "/home/dw/painel/assets/kakashicute.png"
+LOCATION_CACHE_FILE = "/home/dw/.painel_location_cache"  # Arquivo oculto seguro
+LOCATION_CACHE_DURATION = 3600  # 1 hora em segundos
+ENABLE_GEOLOCATION = False  # DESABILITADO por padrão por segurança
 # ========RETURN IP=========
 def list_ipv4():
     """Retorna dict iface->IP v4 (sem 127.0.0.1)."""
@@ -45,6 +48,206 @@ def pick_ip():
     if "eth0"  in ips: return "eth0",  ips["eth0"]
     if ips: return next(iter(ips.items()))
     return None, "sem IP"
+
+def get_wifi_network_name():
+    """Obtém o nome da rede WiFi conectada (SSID)."""
+    try:
+        # Tenta iwgetid primeiro (mais comum)
+        out = subprocess.check_output(["iwgetid", "-r"], text=True, stderr=subprocess.DEVNULL)
+        return out.strip() or "Cabo/Desconhecida"
+    except Exception:
+        pass
+    
+    try:
+        # Fallback: nmcli
+        out = subprocess.check_output(["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"], 
+                                    text=True, stderr=subprocess.DEVNULL)
+        for line in out.splitlines():
+            if line.startswith("yes:"):
+                ssid = line.split(":", 1)[1].strip()
+                return ssid or "Cabo/Desconhecida"
+    except Exception:
+        pass
+    
+    return "Cabo/Desconhecida"
+
+def get_temperature():
+    """Obtém a temperatura do sistema (CPU)."""
+    try:
+        # Raspberry Pi - temperatura da CPU
+        temp = read("/sys/class/thermal/thermal_zone0/temp", as_int=True, default=None)
+        if temp:
+            return f"{temp / 1000:.1f}°C"
+    except Exception:
+        pass
+    
+    return "N/A"
+
+def get_location():
+    """Obtém localização com proteções de privacidade."""
+    
+    # PROTEÇÃO: Verifica se geolocalização está habilitada
+    if not ENABLE_GEOLOCATION:
+        return get_location_fallback()
+    
+    # Verifica cache primeiro
+    cached_location = get_cached_location()
+    if cached_location:
+        return cached_location
+    
+    # PROTEÇÃO: Apenas APIs HTTPS confiáveis
+    apis = [
+        {
+            "url": "https://ipapi.co/json/",
+            "timeout": 3,  # Timeout reduzido
+            "parser": lambda data: parse_ipapi_response_safe(data)
+        }
+    ]
+    
+    for api in apis:
+        try:
+            import urllib.request
+            import json
+            
+            # PROTEÇÃO: Headers genéricos para evitar fingerprinting
+            request = urllib.request.Request(api["url"])
+            request.add_header('User-Agent', 'Mozilla/5.0')
+            
+            with urllib.request.urlopen(request, timeout=api["timeout"]) as response:
+                data = json.loads(response.read().decode())
+                result = api["parser"](data)
+                if result:
+                    # Salva no cache protegido
+                    save_location_cache_safe(result)
+                    return result
+                    
+        except Exception as e:
+            print(f"⚠️ Erro de geolocalização (privacidade protegida)")
+            continue
+    
+    # Fallback: timezone do sistema (sempre disponível)
+    fallback = get_location_fallback()
+    save_location_cache_safe(fallback)
+    return fallback
+
+def parse_ipapi_response_safe(data):
+    """Parser seguro - sem coordenadas precisas."""
+    city = data.get("city")
+    region = data.get("region")
+    country = data.get("country_name")
+    
+    # PROTEÇÃO: Não exibe coordenadas GPS precisas
+    if city and region:
+        return f"{city}, {region[:2]}"[:15]
+    elif city:
+        return city[:12]
+    elif country:
+        return country[:10]
+    return None
+
+def save_location_cache_safe(location):
+    """Salva localização no cache com proteções."""
+    try:
+        # PROTEÇÃO: Arquivo com permissões restritas
+        import stat
+        with open(LOCATION_CACHE_FILE, 'w') as f:
+            f.write(location)
+        # Define permissões apenas para o usuário (600)
+        os.chmod(LOCATION_CACHE_FILE, stat.S_IRUSR | stat.S_IWUSR)
+    except Exception:
+        pass
+
+def get_cached_location():
+    """Verifica se há localização válida no cache."""
+    try:
+        if os.path.exists(LOCATION_CACHE_FILE):
+            stat = os.stat(LOCATION_CACHE_FILE)
+            age = time.time() - stat.st_mtime
+            
+            if age < LOCATION_CACHE_DURATION:
+                with open(LOCATION_CACHE_FILE, 'r') as f:
+                    cached = f.read().strip()
+                    if cached and not cached.endswith("(TZ)"):
+                        return cached + " (cache)"
+    except Exception:
+        pass
+    return None
+
+def save_location_cache(location):
+    """Salva localização no cache."""
+    try:
+        with open(LOCATION_CACHE_FILE, 'w') as f:
+            f.write(location)
+    except Exception:
+        pass
+
+def get_cached_location():
+    """Verifica se há localização válida no cache."""
+    try:
+        if os.path.exists(LOCATION_CACHE_FILE):
+            stat = os.stat(LOCATION_CACHE_FILE)
+            age = time.time() - stat.st_mtime
+            
+            if age < LOCATION_CACHE_DURATION:
+                with open(LOCATION_CACHE_FILE, 'r') as f:
+                    cached = f.read().strip()
+                    if cached and not cached.endswith("(TZ)"):
+                        return cached + " (cache)"
+    except Exception:
+        pass
+    return None
+
+def parse_ipapi_response(data):
+    """Parser para ipapi.co"""
+    city = data.get("city")
+    region = data.get("region")
+    country = data.get("country_name")
+    lat = data.get("latitude")
+    lon = data.get("longitude")
+    
+    if city and region:
+        location = f"{city}, {region[:2]}"
+        if lat and lon:
+            location += f" ({lat:.1f},{lon:.1f})"
+        return location[:20]
+    elif city:
+        return city[:15]
+    elif country:
+        return country[:10]
+    return None
+
+def parse_ipinfo_response(data):
+    """Parser para ipinfo.io"""
+    city = data.get("city")
+    region = data.get("region")
+    country = data.get("country")
+    loc = data.get("loc")  # "lat,lon"
+    
+    if city and region:
+        location = f"{city}, {region[:2]}"
+        if loc and "," in loc:
+            lat, lon = loc.split(",")
+            location += f" ({float(lat):.1f},{float(lon):.1f})"
+        return location[:20]
+    elif city:
+        return city[:15]
+    elif country:
+        return country[:10]
+    return None
+
+def get_location_fallback():
+    """Fallback: localização baseada no timezone do sistema."""
+    try:
+        timezone = subprocess.check_output(["timedatectl", "show", "-p", "Timezone", "--value"], 
+                                         text=True, stderr=subprocess.DEVNULL).strip()
+        if "/" in timezone:
+            location = timezone.split("/")[-1].replace("_", " ")
+            return f"{location[:12]} (TZ)"
+        return f"{timezone[:10]} (TZ)"
+    except Exception:
+        pass
+    
+    return "Local"
 
 # -- util: ler arquivo simples
 def read(path, as_int=False, default=None):
@@ -153,9 +356,18 @@ while True:
         img = Image.new("RGB", (width, height), "black")
         draw = ImageDraw.Draw(img)
         iface, ip = pick_ip()
+        
+        # Obtém as novas informações
+        wifi_name = get_wifi_network_name()
+        temperature = get_temperature()
+        location = get_location()
+        
         # textos
         draw.text((10, 10),  "Dw",                            fill="yellow", font=FONT_BIG)
         draw.text((10, 40), f"IP ({iface or '-'}) : {ip}", fill="lime", font=FONT_SMALL)
+        draw.text((10, 60), f"WiFi: {wifi_name}", fill="orange", font=FONT_SMALL)
+        draw.text((10, 80), f"Temp: {temperature}", fill="red", font=FONT_SMALL)
+        draw.text((10, 100), f"Local: {location}", fill="magenta", font=FONT_SMALL)
         draw.text((10, 260),  time.strftime("Hora: %H:%M:%S"), fill="cyan", font=FONT_SMALL)
         draw.text((10, 280),  time.strftime("Data: %d/%m/%Y"), fill="cyan",   font=FONT_SMALL)
 

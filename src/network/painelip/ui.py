@@ -248,7 +248,7 @@ class PanelUI:
         y_pos = 70
         for i, device in enumerate(devices):
             idx = start_idx + i + 1
-            text_color = "red" if device.is_camera else COLOR_TEXT
+            text_color = CAMERA_COLOR if device.is_camera else COLOR_TEXT
 
             # Linha principal com informações básicas
             main_parts = []

@@ -6,6 +6,7 @@ import subprocess
 import ipaddress
 from typing import Dict, List, Optional, Tuple
 from models import DeviceInfo, NetworkScanResult
+from config import CAMERA_PORTS, COMMON_PORTS, ENABLE_FULL_SCAN
 
 # Principais fabricantes de câmeras IP para identificação pelo vendor
 CAMERA_VENDORS = [
@@ -91,6 +92,37 @@ class NetworkDiscovery:
         except Exception:
             return None
     
+    def get_arp_hosts(self, network: str) -> List[str]:
+        """
+        Obtém lista de hosts da tabela ARP na rede especificada.
+        
+        Args:
+            network: Rede CIDR (ex: 192.168.8.0/24)
+            
+        Returns:
+            Lista de IPs encontrados na tabela ARP
+        """
+        try:
+            # Extrai a base da rede (ex: 192.168.8 de 192.168.8.0/24)
+            network_base = ".".join(network.split(".")[:-1])
+            
+            # Executa arp -a e filtra IPs da rede
+            output = subprocess.check_output(["arp", "-a"], text=True)
+            arp_ips = []
+            
+            for line in output.splitlines():
+                # Procura por padrão (IP) na linha
+                import re
+                ip_match = re.search(r'\(([0-9.]+)\)', line)
+                if ip_match:
+                    ip = ip_match.group(1)
+                    if ip.startswith(network_base + "."):
+                        arp_ips.append(ip)
+            
+            return sorted(set(arp_ips))  # Remove duplicatas e ordena
+        except Exception:
+            return []
+
     def start_nmap_scan(self, network: str) -> Optional[subprocess.Popen]:
         """
         Inicia uma varredura nmap assíncrona.
@@ -104,7 +136,26 @@ class NetworkDiscovery:
         if not network:
             return None
         
-        cmd = ["nmap", "-sS", "-O", "-sV", "--version-intensity", "1", "-T4", "-p", "80,443,554,8080,8888,81,8554,9000,5000", network]
+        if ENABLE_FULL_SCAN:
+            # Obtém hosts da tabela ARP para incluir no scan
+            arp_hosts = self.get_arp_hosts(network)
+            
+            # Scan completo: portas comuns + detecção de OS
+            ports_arg = ",".join(str(p) for p in COMMON_PORTS)
+            
+            # Se encontrou hosts no ARP, faz scan direto neles também
+            if arp_hosts:
+                # Faz scan na rede inteira e nos hosts ARP específicos
+                targets = [network] + arp_hosts
+                cmd = ["nmap", "-sS", "-sV", "--version-intensity", "0", "-T5", "-p", ports_arg] + targets
+            else:
+                # Scan normal na rede
+                cmd = ["nmap", "-sS", "-sV", "--version-intensity", "0", "-T5", "-p", ports_arg, network]
+        else:
+            # Scan focado apenas em câmeras (comportamento original)
+            ports_arg = ",".join(str(p) for p in CAMERA_PORTS)
+            cmd = ["nmap", "-sS", "-O", "-sV", "--version-intensity", "1", "-T4", "-p", ports_arg, network]
+        
         try:
             proc = subprocess.Popen(
                 cmd, 
@@ -132,12 +183,32 @@ class NetworkDiscovery:
 
         def mark_camera(device: DeviceInfo) -> None:
             """Define a flag is_camera se portas ou vendor indicarem câmera."""
-            if 80 in device.open_ports or 554 in device.open_ports:
+            if any(port in device.open_ports for port in CAMERA_PORTS):
                 device.is_camera = True
                 return
             vendor_lower = device.vendor.lower()
             if any(v in vendor_lower for v in CAMERA_VENDORS):
                 device.is_camera = True
+
+        def mark_device_type(device: DeviceInfo) -> None:
+            """Identifica o tipo de dispositivo baseado nas portas abertas."""
+            # Se já foi identificado como câmera, mantém
+            if device.is_camera:
+                return
+            
+            # Verifica portas comuns para identificar tipo de dispositivo
+            if 22 in device.open_ports:  # SSH
+                device.device_type = "Server/Linux"
+            elif 3389 in device.open_ports:  # RDP
+                device.device_type = "Windows PC"
+            elif 5900 in device.open_ports:  # VNC
+                device.device_type = "Remote Desktop"
+            elif any(port in device.open_ports for port in [135, 139, 445]):  # SMB/Windows
+                device.device_type = "Windows PC"
+            elif 80 in device.open_ports or 443 in device.open_ports:
+                device.device_type = "Web Server"
+            else:
+                device.device_type = "Network Device"
 
         for line in text.splitlines():
             line = line.strip()
@@ -147,6 +218,7 @@ class NetworkDiscovery:
             if scan_match:
                 if current_device:
                     mark_camera(current_device)
+                    mark_device_type(current_device)
                     devices.append(current_device)
                 
                 token = scan_match.group(1).strip()
@@ -203,9 +275,38 @@ class NetworkDiscovery:
             elif line.startswith("Running:") and not current_device.os:
                 current_device.os = line.split("Running:", 1)[1].strip()
         
+                                             # Adiciona dispositivos ARP que não foram detectados pelo nmap
+        detected_ips = {device.ip for device in devices if device.ip}
+        arp_hosts = self.get_arp_hosts(self.cidr_to_network(f"{detected_ips or ['192.168.8.22']}/24") or "192.168.8.0/24")
+        
+        for arp_ip in arp_hosts:
+            if arp_ip not in detected_ips:
+                # Cria dispositivo para host ARP não detectado
+                arp_device = DeviceInfo()
+                arp_device.ip = arp_ip
+                arp_device.device_type = "ARP Host"
+                
+                # Tenta obter hostname do ARP
+                try:
+                    arp_output = subprocess.check_output(["arp", "-a"], text=True)
+                    for line in arp_output.splitlines():
+                        if arp_ip in line:
+                            # Extrai hostname da linha ARP se houver
+                            hostname_match = re.search(r"(\S+)\s+\(" + re.escape(arp_ip) + r"\)", line)
+                            if hostname_match:
+                                hostname = hostname_match.group(1)
+                                if hostname != arp_ip and not re.match(r"^[0-9.]+$", hostname):
+                                    arp_device.hostname = hostname
+                            break
+                except:
+                    pass
+                
+                devices.append(arp_device)
+        
         # Adiciona o último dispositivo
         if current_device:
             mark_camera(current_device)
+            mark_device_type(current_device)
             devices.append(current_device)
         
         return self._deduplicate_devices(devices)
