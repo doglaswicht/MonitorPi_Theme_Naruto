@@ -12,8 +12,7 @@ This project is intended as a lightweight, offline‑friendly control panel for 
 - Configuration
 - Network scanner details
 - Security & privacy
-- Contributing
-- License
+
 
 ## Features
 
