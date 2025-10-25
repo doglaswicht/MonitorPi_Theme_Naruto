@@ -28,7 +28,7 @@ This project is intended as a lightweight, offline‑friendly control panel for 
 Clone the repository and run the touchscreen menu from the project root:
 
 ```bash
-git clone [<repo-url>](https://github.com/doglaswicht/MonitorPi_Theme_Naruto) MonitorPi
+git clone https://github.com/doglaswicht/MonitorPi_Theme_Naruto MonitorPi
 cd MonitorPi
 # start the main menu (root may be required for framebuffer/touch access)
 sudo python3 touch_menu_visual.py
