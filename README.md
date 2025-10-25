@@ -95,9 +95,6 @@ Contributions are welcome. Please follow these guidelines:
 3. Run `python3 -m py_compile` on modified modules and fix linting if required.
 4. Open a pull request describing the change and any validation steps.
 
-## License
-
-This project does not include a license file by default. If you intend to publish the project, add a `LICENSE` file (MIT, Apache‑2.0, etc.) to make your preferred license explicit.
 
 ---
 
