@@ -1,6 +1,7 @@
 # Monitor_Pi
 ![Raspberry Pi](https://github.com/doglaswicht/miniecran35/blob/main/assets/gifs2/raspberry_monitor.gif)
-> Miniecran35 is a compact touchscreen dashboard for small devices (Raspberry Pi). It provides a simple touchscreen menu, network device scanner, system information (CPU temperature, Wi‑Fi SSID), and safe geolocation options.
+
+> MonitorPi is a compact touchscreen dashboard for small devices (Raspberry Pi). It provides a simple touchscreen menu, network device scanner, system information (CPU temperature, Wi‑Fi SSID), and safe geolocation options.
 
 This project is intended as a lightweight, offline‑friendly control panel for home labs and small embedded projects. It includes a network scanner tuned to find cameras and other local devices and a touchscreen menu optimized for small displays.
 
