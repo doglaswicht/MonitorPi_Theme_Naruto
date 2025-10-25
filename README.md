@@ -19,6 +19,7 @@ This project is intended as a lightweight, offline‑friendly control panel for 
 
 - Touchscreen menu with GIF support and configurable buttons
 - Network scanner with ARP-assisted discovery and camera detection
+- Real-time network monitor displaying all connected devices
 - System info view: Wi‑Fi SSID, CPU temperature, optional geolocation
 - Secure defaults: geolocation disabled by default and cached safely
 - Small footprint, designed to run on a Raspberry Pi with a 480×320 framebuffer
