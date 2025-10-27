@@ -100,3 +100,5 @@ Contributions are welcome. Please follow these guidelines:
 ---
 
 If you want, I can also add a short `CONTRIBUTING.md`, CI example, or a minimal `requirements.txt` (if any new dependencies are needed). Tell me which one you prefer next.
+
+[Back to the site](https://www.allup.ch)
